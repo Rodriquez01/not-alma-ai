@@ -1,210 +1,214 @@
-require('dotenv').config();
-
-const express = require('express');
-const path = require('path');
+require("dotenv").config();
+const express = require("express");
+const path = require("path");
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = process.env.PORT || 3000;
 
-const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
-const OPENAI_MODEL = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
-const OPENAI_API_URL = (process.env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions').trim();
+app.use(express.json({ limit: "1mb" }));
+app.use(express.static(path.join(__dirname, "public")));
 
-const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
-const GEMINI_MODEL = (process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim();
-const GEMINI_API_URL = (process.env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/models').trim();
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 function getActiveProvider() {
   if (GEMINI_API_KEY) {
-    return { provider: 'gemini', model: GEMINI_MODEL };
+    return {
+      provider: "gemini",
+      model: GEMINI_MODEL,
+    };
   }
 
   if (OPENAI_API_KEY) {
-    return { provider: 'openai', model: OPENAI_MODEL };
+    return {
+      provider: "openai",
+      model: OPENAI_MODEL,
+    };
   }
 
-  return { provider: null, model: null };
+  return {
+    provider: "none",
+    model: null,
+  };
 }
 
-function buildTeachingPrompt(topic) {
-  return [
-    `Konu: ${topic}`,
-    '',
-    'Bu konuyu sınıfta anlatan iyi bir öğretmen gibi Türkçe açıkla.',
-    'Metin öğrencinin not almasını kolaylaştırmalı.',
-    'Cümleler kısa ve anlaşılır olsun.',
-    'Doğal ders anlatımı tonunda yaz.',
-    'Önce kısa giriş yap.',
-    'Sonra konuyu düzenli sırayla anlat.',
-    'Gerekli yerlerde kısa tekrar cümleleri ekle.',
-    'Madde işareti kullanma.',
-    'Sonda çok kısa bir özet ver.'
-  ].join('\n');
+app.get("/api/config", (req, res) => {
+  const active = getActiveProvider();
+
+  res.json({
+    ok: true,
+    hasApiKey: active.provider !== "none",
+    provider: active.provider,
+    model: active.model,
+  });
+});
+
+function buildTopicPrompt(topic) {
+  return `
+Aşağıdaki konuyu, sınıfta öğretmen anlatıyormuş gibi açıkla.
+
+Kurallar:
+- Türkçe yaz.
+- Sade ve anlaşılır ol.
+- Öğrencinin not almasını kolaylaştır.
+- Cümleler çok uzun olmasın.
+- Gereksiz süsleme yapma.
+- Önce kısa bir giriş yap.
+- Sonra düzenli bir konu anlatımı oluştur.
+- Önemli yerleri kısa kısa vurgula.
+- Madde işareti kullanma.
+- Doğal bir öğretmen anlatımı gibi yaz.
+- Sonunda çok kısa bir özet ekle.
+
+Konu: ${String(topic).trim()}
+`.trim();
 }
 
-function parseOpenAIText(payload) {
-  return payload?.choices?.[0]?.message?.content?.trim() || '';
-}
-
-function parseGeminiText(payload) {
-  const parts = payload?.candidates?.[0]?.content?.parts;
-  if (!Array.isArray(parts)) return '';
-  return parts.map(part => part?.text || '').join('').trim();
-}
-
-async function generateWithOpenAI(topic) {
-  const response = await fetch(OPENAI_API_URL, {
-    method: 'POST',
+async function generateWithOpenAI(prompt) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
       messages: [
         {
-          role: 'system',
-          content: 'Sen öğrenciler için öğretmen anlatımı gibi sade, akıcı ve not alınabilir ders metni hazırlayan bir asistansın.'
+          role: "system",
+          content:
+            "Sen öğrenciler için öğretmen anlatımı şeklinde sade ders metni hazırlayan bir asistansın.",
         },
         {
-          role: 'user',
-          content: buildTeachingPrompt(topic)
-        }
+          role: "user",
+          content: prompt,
+        },
       ],
-      temperature: 0.7
-    })
+      temperature: 0.7,
+    }),
   });
 
   const rawText = await response.text();
 
   if (!response.ok) {
-    throw new Error(`OpenAI hata verdi: ${response.status} ${rawText}`);
+    let details = rawText;
+    try {
+      const parsed = JSON.parse(rawText);
+      details = parsed?.error?.message || rawText;
+    } catch (_) {}
+    throw new Error(`OpenAI hata verdi: ${response.status} - ${details}`);
   }
 
   let data;
   try {
     data = JSON.parse(rawText);
-  } catch {
-    throw new Error('OpenAI cevabı JSON değil.');
+  } catch (err) {
+    throw new Error("OpenAI cevabı JSON değil.");
   }
 
-  const text = parseOpenAIText(data);
-  if (!text) {
-    throw new Error('OpenAI metin döndürmedi.');
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("OpenAI cevap içeriği boş döndü.");
   }
 
-  return text;
+  return content;
 }
 
-async function generateWithGemini(topic) {
-  const url = `${GEMINI_API_URL}/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+async function generateWithGemini(prompt) {
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 900
-      },
       contents: [
         {
-          role: 'user',
           parts: [
             {
-              text: buildTeachingPrompt(topic)
-            }
-          ]
-        }
-      ]
-    })
+              text: `Sen öğrenciler için öğretmen anlatımı şeklinde sade ders metni hazırlayan bir asistansın.\n\n${prompt}`,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.7,
+      },
+    }),
   });
 
   const rawText = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Gemini hata verdi: ${response.status} ${rawText}`);
+    let details = rawText;
+    try {
+      const parsed = JSON.parse(rawText);
+      details = parsed?.error?.message || rawText;
+    } catch (_) {}
+    throw new Error(`Gemini hata verdi: ${response.status} - ${details}`);
   }
 
   let data;
   try {
     data = JSON.parse(rawText);
-  } catch {
-    throw new Error('Gemini cevabı JSON değil.');
+  } catch (err) {
+    throw new Error("Gemini cevabı JSON değil.");
   }
 
-  const text = parseGeminiText(data);
-  if (!text) {
-    throw new Error('Gemini metin döndürmedi.');
+  const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) {
+    throw new Error("Gemini cevap içeriği boş döndü.");
   }
 
-  return text;
+  return content;
 }
 
-function getPublicConfig() {
-  const active = getActiveProvider();
-  return {
-    ok: true,
-    hasApiKey: Boolean(active.provider),
-    provider: active.provider,
-    model: active.model
-  };
-}
-
-app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/api/config', (_req, res) => {
-  res.json(getPublicConfig());
-});
-
-app.post('/api/generate-topic', async (req, res) => {
+app.post("/api/generate-topic", async (req, res) => {
   try {
-    const topic = String(req.body?.topic || '').trim();
+    const { topic } = req.body || {};
 
-    if (!topic) {
-      return res.status(400).json({ ok: false, error: 'Konu boş olamaz.' });
-    }
-
-    const active = getActiveProvider();
-    if (!active.provider) {
-      return res.status(500).json({
+    if (!topic || !String(topic).trim()) {
+      return res.status(400).json({
         ok: false,
-        error: 'Sunucuda AI anahtarı ayarlı değil. OPENAI_API_KEY veya GEMINI_API_KEY ekle.'
+        error: "Konu boş olamaz.",
       });
     }
 
-    const text = active.provider === 'gemini'
-      ? await generateWithGemini(topic)
-      : await generateWithOpenAI(topic);
+    const active = getActiveProvider();
+
+    if (active.provider === "none") {
+      return res.status(500).json({
+        ok: false,
+        error: "Sunucuda geçerli bir API anahtarı yok.",
+      });
+    }
+
+    const prompt = buildTopicPrompt(topic);
+
+    let text = "";
+
+    if (active.provider === "gemini") {
+      text = await generateWithGemini(prompt);
+    } else if (active.provider === "openai") {
+      text = await generateWithOpenAI(prompt);
+    }
 
     return res.json({
       ok: true,
+      text,
       provider: active.provider,
       model: active.model,
-      text
     });
   } catch (error) {
-    console.error('generate-topic error:', error);
-
-    const message = String(error?.message || 'Bilinmeyen hata');
-    const lowered = message.toLowerCase();
-
-    let safeError = 'Sunucu hatası oluştu.';
-    if (lowered.includes('401') || lowered.includes('api key') || lowered.includes('unauthorized')) {
-      safeError = 'API anahtarı geçersiz ya da yanlış servis için kullanılıyor.';
-    } else if (lowered.includes('429')) {
-      safeError = 'API kullanım limiti aşıldı ya da bakiye yetersiz.';
-    } else if (lowered.includes('model')) {
-      safeError = 'Seçili model bu servis için uygun değil.';
-    }
-
+    console.error("generate-topic error:", error);
     return res.status(500).json({
       ok: false,
-      error: safeError,
-      details: message
+      error: error.message || "Sunucu hatası oluştu.",
     });
   }
 });
@@ -212,5 +216,5 @@ app.post('/api/generate-topic', async (req, res) => {
 app.listen(PORT, () => {
   const active = getActiveProvider();
   console.log(`Sunucu çalışıyor: http://localhost:${PORT}`);
-  console.log(`Aktif sağlayıcı: ${active.provider || 'yok'} ${active.model || ''}`.trim());
+  console.log(`Aktif servis: ${active.provider} / ${active.model || "yok"}`);
 });
