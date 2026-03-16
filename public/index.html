@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HızlıNot Pro - AI Not Alma Platformu</title>
+  <meta name="description" content="AI ile konu anlatımı, özet, quiz, flashcard ve sesli not alma platformu.">
+  <meta name="keywords" content="ai not alma, ders çalışma, quiz, flashcard, yapay zeka">
+  <meta name="author" content="HızlıNot Pro">
+  <meta property="og:title" content="HızlıNot Pro">
+  <meta property="og:description" content="Konu gir, öğretmen gibi anlatım üret, not al, özet çıkar, quiz oluştur.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="navbar">
+      <div class="brand">
+        <div class="brand-logo">HN</div>
+        <div>
+          <h1>HızlıNot Pro</h1>
+          <p>AI destekli ders çalışma ve not alma platformu</p>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="ghost-btn" id="loadDemoBtn">Demo Yükle</button>
+        <button class="primary-btn" id="saveAllBtn">Kaydet</button>
+      </div>
+    </nav>
+
+    <section class="hero-content">
+      <div class="hero-left">
+        <span class="tag">Yeni Nesil Çalışma Aracı</span>
+        <h2>Ders anlatımı, özet, quiz, flashcard ve sesli not alma tek yerde</h2>
+        <p>
+          Konu gir, öğretmen gibi anlatım üret. Metni sesli dinle. Yazma hızına göre duraksat.
+          Not al, özet çıkar, sınav sorusu ve flashcard oluştur.
+        </p>
+
+        <div class="hero-stats">
+          <div class="stat-card">
+            <strong id="apiState">Kontrol ediliyor...</strong>
+            <span>API Durumu</span>
+          </div>
+          <div class="stat-card">
+            <strong>4</strong>
+            <span>AI Aracı</span>
+          </div>
+          <div class="stat-card">
+            <strong>Sesli</strong>
+            <span>Okuma Sistemi</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="glass-card">
+          <h3>Önerilen Hızlı Ayarlar</h3>
+          <div class="preset-list">
+            <button class="preset-btn" data-preset="fast">Hızlı</button>
+            <button class="preset-btn" data-preset="balanced">Dengeli</button>
+            <button class="preset-btn" data-preset="slow">Yavaş</button>
+          </div>
+          <ul>
+            <li>Yazma hızına göre bekleme</li>
+            <li>Türkçe ses seçimi</li>
+            <li>Tek tıkla özet ve quiz</li>
+            <li>Kaydetme ve dışa aktarma</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </header>
+
+  <main class="container">
+    <section class="dashboard-grid">
+      <div class="panel panel-large">
+        <div class="panel-header">
+          <h3>AI Çalışma Stüdyosu</h3>
+          <p>Konu üret, özet çıkar, quiz ve flashcard oluştur.</p>
+        </div>
+
+        <div class="toolbar-row">
+          <div class="field">
+            <label for="topicInput">Konu</label>
+            <input id="topicInput" type="text" placeholder="Örn: Fotosentez, Mitoz bölünme, Fonksiyonlar" />
+          </div>
+
+          <div class="field">
+            <label for="levelSelect">Seviye</label>
+            <select id="levelSelect">
+              <option value="basit">Basit</option>
+              <option value="orta" selected>Orta</option>
+              <option value="detayli">Detaylı</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="toneSelect">Anlatım Tarzı</label>
+            <select id="toneSelect">
+              <option value="öğretmen gibi" selected>Öğretmen Gibi</option>
+              <option value="çok sade">Çok Sade</option>
+              <option value="sınav odaklı">Sınav Odaklı</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="lengthSelect">Uzunluk</label>
+            <select id="lengthSelect">
+              <option value="kısa">Kısa</option>
+              <option value="orta" selected>Orta</option>
+              <option value="uzun">Uzun</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="button-grid">
+          <button class="primary-btn" id="generateTopicBtn">Konu Anlatımı Üret</button>
+          <button class="secondary-btn" id="summarizeBtn">Özet Çıkar</button>
+          <button class="secondary-btn" id="quizBtn">Quiz Oluştur</button>
+          <button class="secondary-btn" id="flashcardsBtn">Flashcard Oluştur</button>
+          <button class="ghost-btn" id="clearMainTextBtn">Metni Temizle</button>
+          <button class="ghost-btn" id="copyMainTextBtn">Metni Kopyala</button>
+        </div>
+
+        <div class="field">
+          <label for="mainText">Ana İçerik</label>
+          <textarea id="mainText" rows="14" placeholder="Burada konu anlatımı veya kendi metnin olacak..."></textarea>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Sesli Okuma Ayarları</h3>
+          <p>Yazma hızına göre bekleme süresini ayarla.</p>
+        </div>
+
+        <div class="recommended-box">
+          <h4>Önerilen Ayarlar</h4>
+          <p>En rahat kullanım için:</p>
+          <ul>
+            <li>Yazma Hızı: 350</li>
+            <li>Ek Bekleme: 200</li>
+            <li>Cümle Sonu Duraklama: 300</li>
+          </ul>
+        </div>
+
+        <div class="field">
+          <label for="voiceSelect">Ses</label>
+          <select id="voiceSelect"></select>
+        </div>
+
+        <div class="field">
+          <label>Konuşma Hızı: <span id="rateValue">0.95x</span></label>
+          <input id="rateRange" type="range" min="0.6" max="1.4" step="0.05" value="0.95" />
+        </div>
+
+        <div class="field">
+          <label>Ses Tonu: <span id="pitchValue">1.00</span></label>
+          <input id="pitchRange" type="range" min="0.8" max="1.3" step="0.05" value="1" />
+        </div>
+
+        <div class="field">
+          <label>Ses Seviyesi: <span id="volumeValue">1.00</span></label>
+          <input id="volumeRange" type="range" min="0.1" max="1" step="0.05" value="1" />
+        </div>
+
+        <div class="field">
+          <label for="handwritingSpeed">Yazma Hızı (karakter/dakika)</label>
+          <input id="handwritingSpeed" type="number" min="60" max="1200" value="350" />
+        </div>
+
+        <div class="field">
+          <label for="extraPause">Ek Bekleme (ms)</label>
+          <input id="extraPause" type="number" min="0" max="5000" value="200" />
+        </div>
+
+        <div class="field">
+          <label for="sentencePause">Cümle Sonu Duraklama (ms)</label>
+          <input id="sentencePause" type="number" min="0" max="5000" value="300" />
+        </div>
+
+        <div class="field">
+          <label for="chunkSize">Parça Uzunluğu (kelime)</label>
+          <input id="chunkSize" type="number" min="4" max="40" value="12" />
+        </div>
+
+        <div class="button-grid two">
+          <button class="secondary-btn" id="testVoiceBtn">Sesi Test Et</button>
+          <button class="ghost-btn" id="calcBtn">Süre Hesapla</button>
+        </div>
+      </div>
+
+      <div class="panel panel-large">
+        <div class="panel-header">
+          <h3>Oynatıcı</h3>
+          <p>Metni parçalı şekilde sesli dinle.</p>
+        </div>
+
+        <div class="button-grid four">
+          <button class="primary-btn" id="startBtn">Başlat</button>
+          <button class="secondary-btn" id="pauseBtn">Duraklat</button>
+          <button class="secondary-btn" id="resumeBtn">Devam Et</button>
+          <button class="danger-btn" id="stopBtn">Durdur</button>
+        </div>
+
+        <div class="progress-card">
+          <div class="progress-top">
+            <span>İlerleme</span>
+            <span id="progressText">0 / 0</span>
+          </div>
+          <div class="progress-bar">
+            <div id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="current-reading">
+          <h4>Şu An Okunan Parça</h4>
+          <p id="currentChunk">Henüz başlatılmadı.</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="mini-stat">
+            <strong id="wordCount">0</strong>
+            <span>Kelime</span>
+          </div>
+          <div class="mini-stat">
+            <strong id="charCount">0</strong>
+            <span>Karakter</span>
+          </div>
+          <div class="mini-stat">
+            <strong id="writeTime">0 sn</strong>
+            <span>Yazma Süresi</span>
+          </div>
+          <div class="mini-stat">
+            <strong id="speakTime">0 sn</strong>
+            <span>Okuma Süresi</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Çalışma Araçları</h3>
+          <p>AI çıktılarını ayrı alanlarda tut.</p>
+        </div>
+
+        <div class="field">
+          <label for="summaryOutput">Özet</label>
+          <textarea id="summaryOutput" rows="7" placeholder="Özet burada görünecek..."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="quizOutput">Quiz</label>
+          <textarea id="quizOutput" rows="7" placeholder="Quiz burada görünecek..."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="flashcardsOutput">Flashcard</label>
+          <textarea id="flashcardsOutput" rows="7" placeholder="Flashcard burada görünecek..."></textarea>
+        </div>
+      </div>
+
+      <div class="panel panel-wide">
+        <div class="panel-header">
+          <h3>Not Alanı</h3>
+          <p>Notlarını yaz, kaydet ve indir.</p>
+        </div>
+
+        <div class="field">
+          <label for="notesArea">Notların</label>
+          <textarea id="notesArea" rows="12" placeholder="Buraya notlarını yaz..."></textarea>
+        </div>
+
+        <div class="button-grid">
+          <button class="primary-btn" id="saveNotesBtn">Notları Kaydet</button>
+          <button class="secondary-btn" id="downloadNotesBtn">TXT İndir</button>
+          <button class="secondary-btn" id="copyNotesBtn">Kopyala</button>
+          <button class="ghost-btn" id="loadNotesBtn">Kayıtlıyı Yükle</button>
+          <button class="danger-btn" id="clearNotesBtn">Notları Temizle</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>HızlıNot Pro • AI destekli çalışma platformu</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
